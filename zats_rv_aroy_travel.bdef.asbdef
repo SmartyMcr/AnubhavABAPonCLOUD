@@ -1,0 +1,173 @@
+//managed implementation in class zbp_ats_rv_aroy_travel unique;
+managed implementation in class zbp_ats_aroy_travel unique;
+strict ( 2 );
+with draft;
+define behavior for zats_rv_aroy_travel alias Travel
+implementation in class zbp_ats_aroy_travel unique
+persistent table /dmo/travel_m
+draft table zats_d_ar_travel
+lock master
+total etag LastChangedAt
+early numbering
+authorization master ( instance )
+with additional save
+etag master LastChangedAt
+{
+  create ( precheck );
+  update ( precheck );
+  delete;
+
+  association _Booking { create ( features : instance ); with draft; }
+  association _attachment { create ( features : instance ); with draft; }
+
+  //static feature control
+  field ( readonly ) TravelId, CreatedAt, CreatedBy, LastChangedAt, LastChangedBy, TotalPrice;
+  field ( mandatory ) AgencyId, CustomerId, BeginDate, CurrencyCode, OverallStatus, EndDate;
+
+  factory action copyTravel [1];
+
+  action AcceptRequest result [1] $self;
+  action RejectRequest result [1] $self;
+
+  internal action reCalcTotalPrice;
+
+  determination calculateTotalPrice on modify { create; field BookingFee, CurrencyCode; }
+
+  validation validateHeaderData on save { create; field CustomerId, BeginDate, EndDate; }
+
+  side effects
+  {
+    field BookingFee affects field TotalPrice;
+    field CurrencyCode affects field TotalPrice;
+  }
+
+  //draft actions
+  draft action Edit;
+  draft action Resume;
+  draft action Discard;
+  draft action Activate optimized;
+  draft determine action Prepare;
+
+  mapping for /dmo/travel_m
+    {
+      TravelId      = travel_id;
+      AgencyId      = agency_id;
+      BeginDate     = begin_date;
+      EndDate       = end_date;
+      BookingFee    = booking_fee;
+      CreatedAt     = created_at;
+      CreatedBy     = created_by;
+      TotalPrice    = total_price;
+      OverallStatus = overall_status;
+      Description   = description;
+      CurrencyCode  = currency_code;
+      LastChangedAt = last_changed_at;
+      LastChangedBy = last_changed_by;
+      CustomerId    = customer_id;
+    }
+}
+
+define behavior for zats_iv_aroy_booking alias Booking
+implementation in class zbp_ats_aroy_booking unique
+persistent table /dmo/booking_m
+draft table zats_d_ar_book
+lock dependent by _Travel
+early numbering
+authorization dependent by _Travel
+etag master LastChangedAt
+{
+  update;
+  delete;
+  association _Travel { with draft; }
+  association _BookingSupplement { create; with draft; }
+
+  //Static feature control
+  field ( readonly ) TravelId, BookingId, LastChangedAt;
+  field ( mandatory ) CarrierId, ConnectionId, FlightDate, FlightPrice, CurrencyCode, CustomerId;
+
+  determination calculateTotalPrice on modify { field FlightPrice, CurrencyCode; }
+
+  side effects
+  {
+    field FlightPrice affects field _Travel.TotalPrice;
+  }
+
+  mapping for /dmo/booking_m
+    {
+      BookingId     = booking_id;
+      TravelId      = travel_id;
+      BookingStatus = booking_status;
+      CarrierId     = carrier_id;
+      FlightDate    = flight_date;
+      ConnectionId  = connection_id;
+      CurrencyCode  = currency_code;
+      FlightPrice   = flight_price;
+      LastChangedAt = last_changed_at;
+      BookingDate   = booking_date;
+      CustomerId    = customer_id;
+    }
+}
+
+
+define behavior for zats_iv_aroy_attachment alias Attachment
+implementation in class zbp_ats_aroy_attachment unique
+persistent table zats_aroy_attach
+lock dependent by _Travel
+authorization dependent by _Travel
+etag master LastChangedAt
+draft table zats_d_ar_attach
+{
+  update;
+  delete;
+  association _Travel { with draft; }
+
+  //Static feature control
+  field ( readonly ) TravelId, Id;
+  field ( numbering : managed ) Id;
+  field ( mandatory ) Attachment, Filename, Memo;
+
+
+  mapping for zats_aroy_attach
+    {
+      TravelId      = travel_id;
+      CreatedAt     = created_at;
+      CreatedBy     = created_by;
+      Filename      = filename;
+      Filetype      = filetype;
+      Id            = id;
+      LastChangedAt = last_changed_at;
+      LastChangedBy = last_changed_by;
+      Memo          = memo;
+      Attachment    = attachment;
+    }
+}
+
+define behavior for zats_iv_aroy_booking_supl alias BookingSuppl
+implementation in class zbp_ats_aroy_booksupl unique
+persistent table /dmo/booksuppl_m
+draft table zats_d_ar_bksp
+lock dependent by _Travel
+early numbering
+authorization dependent by _Travel
+etag master LastChangedAt
+{
+  update;
+  delete;
+  association _Travel { with draft; }
+  association _Booking { with draft; }
+
+  //Static Feature Control
+  field ( readonly ) TravelId, BookingId, BookingSupplementId, LastChangedAt;
+  field ( mandatory ) CurrencyCode, Price, SupplementId;
+
+  mapping for /dmo/booksuppl_m
+    {
+      TravelId            = travel_id;
+      BookingId           = booking_id;
+      BookingSupplementId = booking_supplement_id;
+      SupplementId        = supplement_id;
+      Price               = price;
+      CurrencyCode        = currency_code;
+      LastChangedAt       = last_changed_at;
+    }
+}
